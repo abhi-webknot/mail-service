@@ -25,7 +25,7 @@ router.post("/send-feedback-email", async (req, res) => {
     
 
     // Collect all email recipients
-    const recipients = [
+    let recipients = [
       ...(formData.accountManagerEmail?.split(",") || []),
       ...(formData.deliveryManagerEmail?.split(",") || []),
       ...(formData.projectManagerEmail?.split(",") || []),
