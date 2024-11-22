@@ -11,59 +11,96 @@ const corsOptions = {
   credentials: true
 };
 
-// Apply CORS middleware to this route
-router.use(cors(corsOptions));
+const isValidEmail = (email) => {
+  return email && 
+         typeof email === 'string' && 
+         email.includes('@') && 
+         email.includes('.') && 
+         email.trim().length > 0;
+};
 
-// Handle preflight requests
+router.use(cors(corsOptions));
 router.options('/api/send-feedback-email', cors(corsOptions));
 
 router.post("/send-feedback-email", async (req, res) => {
   try {
     const formData = req.body;
-
-    console.log("formData",formData);
+    console.log("Received formData:", formData);
     
-
-    // Collect all email recipients
+    // Collect and validate email addresses
     let recipients = [
       ...(formData.accountManagerEmail?.split(",") || []),
       ...(formData.deliveryManagerEmail?.split(",") || []),
       ...(formData.projectManagerEmail?.split(",") || []),
-    ].map(email => email.trim()); // Trim spaces
+    ]
+    .map(email => email.trim())
+    .filter(isValidEmail);
 
-    if (formData.rating < 4) {
-      recipients = [
-        ...recipients,
-        ...(formData.escalationTeam?.split(",") || []).map(email => email.trim()),
-      ];
+    if (formData.rating < 4 && formData.escalationTeam) {
+      const escalationEmails = (formData.escalationTeam?.split(",") || [])
+        .map(email => email.trim())
+        .filter(isValidEmail);
+      recipients = [...new Set([...recipients, ...escalationEmails])];
     }
 
     if (!recipients.length) {
-      return res.status(400).json({ message: "No email recipients provided." });
+      return res.status(400).json({ 
+        message: "No valid email recipients provided."
+      });
     }
 
-    // Prepare the email content
-    const config = {
-      sender: { name: "Feedback Team", email: process.env.BREVO_EMAIL_SENDER },
-      to: recipients.map(email => ({ email })), // Format for Brevo API
-      subject: `Feedback Received from ${formData.clientName}`,
+    console.log("Validated recipients:", recipients);
+
+    // Format recipients for Brevo API
+    const formattedRecipients = recipients.map(email => ({
+      email: email,
+      name: email.split('@')[0]
+    }));
+
+    const emailConfig = {
+      subject: `Feedback Received from ${formData.clientName || 'Client'}`,
+      sender: {
+        email: process.env.BREVO_EMAIL_SENDER,
+        name: "Feedback Team"
+      },
+      to: formattedRecipients,
       htmlContent: `
         <h1>Client Feedback</h1>
-        <p><strong>Rating:</strong> ${formData.rating}</p>
-        <p><strong>Feedback:</strong> ${formData.feedback}</p>
-        <p><strong>Client Name:</strong> ${formData.clientName}</p>
-        <p><strong>Project Name:</strong> ${formData.projectName}</p>
-        <p><strong>Escalation:</strong> ${formData.escalation}</p>
-        <p><strong>Escalation Team:</strong> ${formData.escalationTeam}</p>
-      `,
+        <p><strong>Rating:</strong> ${formData.rating || 'N/A'}</p>
+        <p><strong>Feedback:</strong> ${formData.feedback || 'N/A'}</p>
+        <p><strong>Client Details:</strong></p>
+        <ul>
+          <li><strong>Name:</strong> ${formData.clientName || 'N/A'}</li>
+          <li><strong>Project:</strong> ${formData.projectName || 'N/A'}</li>
+          <li><strong>Project ID:</strong> ${formData.projectId || 'N/A'}</li>
+        </ul>
+        ${formData.rating < 4 ? `
+        <p><strong>Escalation Details:</strong></p>
+        <ul>
+          <li><strong>Escalation Required:</strong> ${formData.escalation || 'Yes'}</li>
+          <li><strong>Escalation Team:</strong> ${formData.escalationTeam || 'N/A'}</li>
+        </ul>
+        ` : ''}
+      `
     };
 
-    // Send the email
-    const response = await brevoService.sendEmail(config);
-    res.status(200).json({ message: "Emails sent successfully", response });
+    console.log("Sending email with config:", {
+      ...emailConfig,
+      to: emailConfig.to.map(r => r.email)
+    });
+
+    const response = await brevoService.sendEmail(emailConfig);
+    res.status(200).json({ 
+      message: "Emails sent successfully", 
+      recipients: recipients
+    });
   } catch (error) {
     console.error("Error sending feedback email:", error);
-    res.status(500).json({ message: "Failed to send emails", error });
+    res.status(500).json({ 
+      message: "Failed to send emails",
+      error: error.message,
+      details: error.response?.text
+    });
   }
 });
 
