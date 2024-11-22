@@ -1,13 +1,24 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const emailRoute = require("./routes/mailRoute");
-
+const cors = require('cors');
+const bodyParser = require('body-parser');
 dotenv.config();
 
 const app = express();
 
 // Middleware
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Global CORS configuration for other routes if needed
+app.use(cors({
+  origin: ['https://webknot-webflow.webflow.io', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
 
 // Routes
 app.use("/api", emailRoute);

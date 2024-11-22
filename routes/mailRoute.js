@@ -1,6 +1,21 @@
 const express = require("express");
 const brevoService = require("../service/mailService");
 const router = express.Router();
+const cors = require('cors');
+
+// CORS configuration
+const corsOptions = {
+  origin: ['https://webknot-webflow.webflow.io', 'http://localhost:3000'],
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true
+};
+
+// Apply CORS middleware to this route
+router.use(cors(corsOptions));
+
+// Handle preflight requests
+router.options('/api/send-feedback-email', cors(corsOptions));
 
 router.post("/send-feedback-email", async (req, res) => {
   try {
