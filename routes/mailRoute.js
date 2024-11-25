@@ -22,19 +22,20 @@ const isValidEmail = (email) => {
 router.use(cors(corsOptions));
 router.options('/api/send-feedback-email', cors(corsOptions));
 
-router.post("/send-feedback-email", async (req, res) => {
+router.post("/send-feedback-email/:lvl", async (req, res) => {
   try {
+    const { lvl } = req.params; // Extract 'lvl' from route parameters
     const formData = req.body;
     console.log("Received formData:", formData);
-    
+
     // Collect and validate email addresses
     let recipients = [
       ...(formData.accountManagerEmail?.split(",") || []),
       ...(formData.deliveryManagerEmail?.split(",") || []),
       ...(formData.projectManagerEmail?.split(",") || []),
     ]
-    .map(email => email.trim())
-    .filter(isValidEmail);
+      .map(email => email.trim())
+      .filter(isValidEmail);
 
     if (formData.rating < 4 && formData.escalationTeam) {
       const escalationEmails = (formData.escalationTeam?.split(",") || [])
@@ -44,8 +45,8 @@ router.post("/send-feedback-email", async (req, res) => {
     }
 
     if (!recipients.length) {
-      return res.status(400).json({ 
-        message: "No valid email recipients provided."
+      return res.status(400).json({
+        message: "No valid email recipients provided.",
       });
     }
 
@@ -54,53 +55,78 @@ router.post("/send-feedback-email", async (req, res) => {
     // Format recipients for Brevo API
     const formattedRecipients = recipients.map(email => ({
       email: email,
-      name: email.split('@')[0]
+      name: email.split("@")[0],
     }));
 
-    const date=new Date()
+    const date = new Date();
+
+    // Determine email subject and body based on 'lvl' and rating
+    let subject = "";
+    let bodyContent = "";
+
+    if (lvl === "proj") {
+      subject = formData.rating > 4 ? "Green PULCE" : "Red PULCE";
+      subject += ` - ${formData.clientName || "Client"} - ${formData.projectName || "Project"}`;
+      bodyContent = `
+        <h1>Project Feedback</h1>
+        <p><strong>Client Name:</strong> ${formData.clientName || "N/A"}</p>
+        <p><strong>Account Manager:</strong> ${formData.accountManager || "N/A"}</p>
+        <p><strong>Project Name:</strong> ${formData.projectName || "N/A"}</p>
+        <p><strong>Client Delivery Manager:</strong> ${formData.deliveryManager || "N/A"}</p>
+        <p><strong>Project Manager:</strong> ${formData.projectManager || "N/A"}</p>
+        <p><strong>Escalation Team:</strong> ${formData.escalation || "N/A"}</p>
+        <br />
+        <p><strong>Feedback Message:</strong> ${formData.feedback || "N/A"}</p>
+        <p><strong>Feedback Rating:</strong> ${formData.rating || "N/A"}</p>
+        <p><strong>Date:</strong> ${date.toISOString()}</p>
+      `;
+    } else if (lvl === "client") {
+      subject = formData.rating > 4 ? "Green PULCE" : "Red PULCE";
+      subject += ` - ${formData.clientName || "Client"}`;
+      bodyContent = `
+        <h1>Client Feedback</h1>
+        <p><strong>Client Name:</strong> ${formData.clientName || "N/A"}</p>
+        <p><strong>Account Manager:</strong> ${formData.accountManager || "N/A"}</p>
+        <p><strong>Escalation Team:</strong> ${formData.escalation || "N/A"}</p>
+        <br />
+        <p><strong>Feedback Message:</strong> ${formData.feedback || "N/A"}</p>
+        <p><strong>Feedback Rating:</strong> ${formData.rating || "N/A"}</p>
+        <p><strong>Date:</strong> ${date.toISOString()}</p>
+      `;
+    } else {
+      return res.status(400).json({
+        message: "Invalid level specified. Use 'proj' or 'client'.",
+      });
+    }
 
     const emailConfig = {
-      subject: `Feedback Received from ${formData.clientName || 'Client'}`,
+      subject,
       sender: {
         email: process.env.BREVO_EMAIL_SENDER,
-        name: "Feedback Team"
+        name: "Feedback Team",
       },
       to: formattedRecipients,
-      htmlContent: `
-        <h1>Client Feedback</h1>
-        <p><strong>Client Name:</strong> ${formData.clientName || 'N/A'}</p>
-        <p><strong>Account Manager:</strong> ${formData.accountManager || 'N/A'}</p>
-        <p><strong>Project Name:</strong> ${formData.projectName || 'N/A'}</p>
-        <p><strong>Client Delivery Manager:</strong> ${formData.deliveryManager || 'N/A'}</p>
-        <p><strong>Project Manager:</strong> ${formData.projectManager || 'N/A'}</p>
-        <p><strong>Escalation Team:</strong> ${formData.escalation || 'N/A'}</p>
-        <br />
-        <h2>Project Feedback</h2>
-        <p><strong>Feedback Message:</strong> ${formData.feedback || 'N/A'}</p>
-        <p><strong>Feedback Rating:</strong> ${formData.rating || 'N/A'}</p>
-        <p><strong>Date:</strong> ${date.toISOString() || 'N/A'}</p>
-      `
+      htmlContent: bodyContent,
     };
 
     console.log("Sending email with config:", {
       ...emailConfig,
-      to: emailConfig.to.map(r => r.email)
+      to: emailConfig.to.map(r => r.email),
     });
 
     const response = await brevoService.sendEmail(emailConfig);
-    res.status(200).json({ 
-      message: "Emails sent successfully", 
-      recipients: recipients
+    res.status(200).json({
+      message: "Emails sent successfully",
+      recipients,
     });
   } catch (error) {
     console.error("Error sending feedback email:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Failed to send emails",
       error: error.message,
-      details: error.response?.text
+      details: error.response?.text,
     });
   }
 });
-
 
 module.exports = router;

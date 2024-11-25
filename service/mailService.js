@@ -1,5 +1,6 @@
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 require("dotenv").config();
+console.log("brevo key",process.env.BREVO_KEY);
 
 class BrevoService {
   constructor() {
