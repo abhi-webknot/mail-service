@@ -57,6 +57,8 @@ router.post("/send-feedback-email", async (req, res) => {
       name: email.split('@')[0]
     }));
 
+    const date=new Date()
+
     const emailConfig = {
       subject: `Feedback Received from ${formData.clientName || 'Client'}`,
       sender: {
@@ -66,21 +68,17 @@ router.post("/send-feedback-email", async (req, res) => {
       to: formattedRecipients,
       htmlContent: `
         <h1>Client Feedback</h1>
-        <p><strong>Rating:</strong> ${formData.rating || 'N/A'}</p>
-        <p><strong>Feedback:</strong> ${formData.feedback || 'N/A'}</p>
-        <p><strong>Client Details:</strong></p>
-        <ul>
-          <li><strong>Name:</strong> ${formData.clientName || 'N/A'}</li>
-          <li><strong>Project:</strong> ${formData.projectName || 'N/A'}</li>
-          <li><strong>Project ID:</strong> ${formData.projectId || 'N/A'}</li>
-        </ul>
-        ${formData.rating < 4 ? `
-        <p><strong>Escalation Details:</strong></p>
-        <ul>
-          <li><strong>Escalation Required:</strong> ${formData.escalation || 'Yes'}</li>
-          <li><strong>Escalation Team:</strong> ${formData.escalationTeam || 'N/A'}</li>
-        </ul>
-        ` : ''}
+        <p><strong>Client Name:</strong> ${formData.clientName || 'N/A'}</p>
+        <p><strong>Account Manager:</strong> ${formData.accountManager || 'N/A'}</p>
+        <p><strong>Project Name:</strong> ${formData.projectName || 'N/A'}</p>
+        <p><strong>Client Delivery Manager:</strong> ${formData.deliveryManager || 'N/A'}</p>
+        <p><strong>Project Manager:</strong> ${formData.projectManager || 'N/A'}</p>
+        <p><strong>Escalation Team:</strong> ${formData.escalation || 'N/A'}</p>
+        <br />
+        <h2>Project Feedback</h2>
+        <p><strong>Feedback Message:</strong> ${formData.feedback || 'N/A'}</p>
+        <p><strong>Feedback Rating:</strong> ${formData.rating || 'N/A'}</p>
+        <p><strong>Date:</strong> ${date.toISOString() || 'N/A'}</p>
       `
     };
 
@@ -103,5 +101,6 @@ router.post("/send-feedback-email", async (req, res) => {
     });
   }
 });
+
 
 module.exports = router;
