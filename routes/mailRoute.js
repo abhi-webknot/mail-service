@@ -1,26 +1,6 @@
 const express = require("express");
 const brevoService = require("../service/mailService");
 const router = express.Router();
-const cors = require('cors');
-
-// CORS configuration
-const corsOptions = {
-  origin: ['https://webknot-webflow.webflow.io', 'http://localhost:3000'],
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true
-};
-
-const isValidEmail = (email) => {
-  return email && 
-         typeof email === 'string' && 
-         email.includes('@') && 
-         email.includes('.') && 
-         email.trim().length > 0;
-};
-
-router.use(cors(corsOptions));
-router.options('/api/send-feedback-email', cors(corsOptions));
 
 router.post("/send-feedback-email/:lvl", async (req, res) => {
   try {
@@ -35,13 +15,11 @@ router.post("/send-feedback-email/:lvl", async (req, res) => {
       ...(formData.projectManagerEmail?.split(",") || []),
     ]
       .map(email => email.trim())
-      .filter(isValidEmail);
 
     if (formData.rating < 4 && formData.escalationTeam) {
       const escalationEmails = (formData.escalationTeam?.split(",") || [])
         .map(email => email.trim())
-        .filter(isValidEmail);
-      recipients = [...new Set([...recipients, ...escalationEmails])];
+      recipients = [...recipients, ...escalationEmails];
     }
 
     if (!recipients.length) {
@@ -55,7 +33,6 @@ router.post("/send-feedback-email/:lvl", async (req, res) => {
     // Format recipients for Brevo API
     const formattedRecipients = recipients.map(email => ({
       email: email,
-      name: email.split("@")[0],
     }));
 
     const date = new Date();

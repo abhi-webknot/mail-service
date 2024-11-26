@@ -13,9 +13,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Global CORS configuration for other routes if needed
 app.use(cors({
-  origin: ['https://webknot-webflow.webflow.io', 'http://localhost:3000'],
+  origin: ['https://webknot-webflow.webflow.io'],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type']
 }));
