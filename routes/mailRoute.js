@@ -13,12 +13,12 @@ router.post("/send-feedback-email/:lvl", async (req, res) => {
       ...(formData.accountManagerEmail?.split(",") || []),
       ...(formData.deliveryManagerEmail?.split(",") || []),
       ...(formData.projectManagerEmail?.split(",") || []),
-    ]
-      .map(email => email.trim())
+      ].map(email => email.trim()).filter(email => email);
 
     if (formData.rating < 4 && formData.escalationTeam) {
       const escalationEmails = (formData.escalationTeam?.split(",") || [])
-        .map(email => email.trim())
+      .map(email => email.trim())
+      .filter(email => email);
       recipients = [...recipients, ...escalationEmails];
     }
 
@@ -31,10 +31,18 @@ router.post("/send-feedback-email/:lvl", async (req, res) => {
     console.log("Validated recipients:", recipients);
 
     // Format recipients for Brevo API
-    const formattedRecipients = recipients.map(email => ({
-      email: email,
-    }));
+    const formattedRecipients = recipients.map(email => ({ email }));
 
+    if (!formattedRecipients.length) {
+        return res.status(400).json({
+        message: "No valid email recipients for Brevo API.",
+      });
+    }
+
+    if (!process.env.BREVO_EMAIL_SENDER) {
+      console.error("Sender email is not configured in the environment variables.");
+      return res.status(500).json({ message: "Sender email not configured." });
+    }
     const date = new Date();
 
     // Determine email subject and body based on 'lvl' and rating
