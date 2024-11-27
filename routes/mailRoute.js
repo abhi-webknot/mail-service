@@ -66,7 +66,7 @@ router.post("/send-feedback-email/:lvl", async (req, res) => {
         <p><strong>Date:</strong> ${date.toISOString()}</p>
       `;
     } else if (lvl === "client") {
-      subject = formData.rating > 4 ? "Green PULCE" : "Red PULCE";
+      subject = formData.rating >= 4 ? "Green PULCE" : "Red PULCE";
       subject += ` - ${formData.clientName || "Client"}`;
       bodyContent = `
         <h1>Client Feedback</h1>
