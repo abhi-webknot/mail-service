@@ -50,7 +50,7 @@ router.post("/send-feedback-email/:lvl", async (req, res) => {
     let bodyContent = "";
 
     if (lvl === "proj") {
-      subject = formData.rating > 4 ? "Green PULCE" : "Red PULCE";
+      subject = formData.rating >= 4 ? "Green PULCE" : "Red PULCE";
       subject += ` - ${formData.clientName || "Client"} - ${formData.projectName || "Project"}`;
       bodyContent = `
         <h1>Project Feedback</h1>
